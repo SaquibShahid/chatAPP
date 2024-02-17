@@ -1,5 +1,7 @@
 import User from "../models/user.model.js";
 import bycrypt from 'bcryptjs';
+import generateTokenAndSetCookie from "../utils/generateToken.js";
+
 export const signup = async (req,res)=>{
     try {
         const {fullName , username , password , confirmPassword , gender} = req.body;
@@ -24,25 +26,53 @@ export const signup = async (req,res)=>{
             gender,
         });
         if(newUser){
+            generateTokenAndSetCookie(newUser._id , res)
             await newUser.save();
-        return res.status(200).json({
-            message : "user successfully created",
-            fullName : newUser.fullName,
-            username : newUser.username,
-            profilePic : newUser.profilePic,
-            gender : newUser.gender
-        })
+            return res.status(200).json({
+                message : "user successfully created",
+                fullName : newUser.fullName,
+                username : newUser.username,
+                profilePic : newUser.profilePic,
+                gender : newUser.gender
+            });
     }
         else {
-            res.status(500).json({message : "Invalid user data"});
+            return res.status(500).json({message : "Invalid user data"});
         }
     } catch (e) {
+        console.log("error in login controller" , e.message);
         return res.status(500).json({message : e.message});
     }
 }
-export const login = (req,res)=>{
-    res.send("login in controller")
+
+export const login = async (req,res)=>{
+    try {
+        const {username , password} = req.body;
+        const user = await User.findOne({username: username});
+        const isPasswordCorrect = await bycrypt.compare(password, user?.password || "");
+        if(!user || !isPasswordCorrect){
+            return res.status(500).json({message : "Invalid username or password"});
+        }
+        generateTokenAndSetCookie(user._id,res);
+
+        return res.status(200).json({
+            fullName : user.fullName,
+            username : user.username,
+            profilePic : user.profilePic,
+            _id : user._id
+        })
+    } catch (e) {
+        console.log("error in login controller" , e.message);
+        return res.status(500).json({message : e.message});
+    }
 }
+
 export const logout = (req,res)=>{
-    res.send("logout in controller")
+    try {
+        res.cookie("jwt","",{maxAge:0});
+        return res.status(200).json({message : "User logged out successfully"});
+    } catch (e) {
+        console.log("error in logout controller" , e.message);
+        return res.status(500).json({message : e.message});
+    }
 }
