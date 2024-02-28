@@ -10,8 +10,9 @@ const useGetConversations = () => {
 			setLoading(true);
 			try {
 				const res = await fetch("/api/users/sidebar-users");
+
+				console.log("data : ", res);
 				const data = await res.json();
-				console.log(data);
 				if (data.error) {
 					throw new Error(data.error);
 				}
